@@ -6,15 +6,43 @@ networks:
 
 services:
   traefik:
-    image: traefik:alpine
-    command: --docker --docker.watch --docker.domain=localhost
+    image: traefik:v2.2
+    command:
+      --api.insecure=true --providers.docker --providers.file.directory=/traefik/dynamic
     restart: always
     ports:
       - 80:80
       - 443:443
       - 8080:8080
     volumes:
-      - ${PWD}/traefik.toml:/etc/traefik/traefik.toml
+      # - ${PWD}/traefik.toml:/etc/traefik/traefik.toml
       - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      - /home/heijk/Apps/localdev/dynamic:/traefik/dynamic
     networks:
       - proxy
+
+  mariadb:
+    image: mariadb
+    volumes:
+      - mysql:/var/lib/mysql
+      # - ${PWD}/sql/:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    ports:
+      - "3306:3306"
+    restart: always
+    networks:
+      - proxy
+
+  adminer:
+    image: adminer
+    networks:
+      - proxy
+    labels:
+      traefik.http.routers.adminer.rule: "Host(`adminer.localhost`)"
+      traefik.docker.network: proxy
+
+volumes:
+  mysql:
+    driver: local
